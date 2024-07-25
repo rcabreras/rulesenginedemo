@@ -1,15 +1,96 @@
 ﻿@page "/example2"
 @using System.Dynamic
+@using Newtonsoft.Json
+@using Newtonsoft.Json.Converters
+@using RulesEngine.Extensions
 @using RulesEngine.Models
 @rendermode InteractiveServer
 
 <PageTitle>Counter</PageTitle>
 
 <h3>Basic rule example with rules loaded from a file</h3>
+<br/>
+<h3>Rules to be evaluated</h3>
+@if (workflow != null)
+{
+    foreach (var w in workflow)
+    {
+        foreach (var r in w.Rules)
+        {
+            if (r.Expression != null)
+            {
+                <span><b>rule name: @r.RuleName - rule: </b>: @r.Expression</span>
+                <br/>
+            }
 
-<p role="status">Current count: @currentCount</p>
+            if (r.Rules != null)
+            {
+                var innerRules = r.Rules.ToArray();
+            
+                foreach (var sr in innerRules)
+                {
+                    <span><b>nested rule name: @sr.RuleName - rule: </b>: @sr.Expression</span>
+                    <br/>
+                }
+            }
+        }  
+    }
+}
+<br/>
+<div>
+    <h4>Customer Info (Input1)</h4>
+    <div>
+        <label>Name: </label>
+        <input @bind="customerInfo.Name" />
+    </div>
+    <div>
+        <label>Email: </label>
+        <input @bind="customerInfo.Email" />
+    </div>
+    <div>
+        <label>Credit History: </label>
+        <input @bind="customerInfo.CreditHistory" />
+    </div>
+    <div>
+        <label>Country: </label>
+        <input @bind="customerInfo.Country" />
+    </div>
+    <div>
+        <label>Loyalty Factor: </label>
+        <input type="number" @bind="customerInfo.LoyaltyFactor" />
+    </div>
+    <div>
+        <label>Total Purchases To Date: </label>
+        <input type="number" @bind="customerInfo.TotalPurchasesToDate" />
+    </div>
+</div>
+<br/>
+<div>
+    <h4>Order Info (Input2)</h4>
+    <div>
+        <label>Total Orders: </label>
+        <input type="number" @bind="orderInfo.TotalOrders" />
+    </div>
+    <div>
+        <label>Recurring Items: </label>
+        <input type="number" @bind="orderInfo.RecurringItems" />
+    </div>
+</div>
+<br/>
+<div>
+    <h4>Telemetry Info (Input3)</h4>
+    <div>
+        <label>No Of Visits Per Month: </label>
+        <input type="number" @bind="telemetryInfo.NoOfVisitsPerMonth" />
+    </div>
+    <div>
+        <label>Percentage Of Buying To Visit: </label>
+        <input type="number" @bind="telemetryInfo.PercentageOfBuyingToVisit" />
+    </div>
+</div>
+<br/>
+<button @onclick="EvaluateRules">Evaluate Rules</button>
 
-<button class="btn btn-primary" @onclick="IncrementCount">Click me</button>
 
 @if (result != null)
 {
@@ -17,52 +98,114 @@
 }
 
 @code {
-    private int currentCount = 0;
+    private CustomerInfo customerInfo = new();
+    private OrderInfo orderInfo = new();
+    private TelemetryInfo telemetryInfo = new();
     private string result;
-
-    private void IncrementCount()
-    {
-        currentCount++;
-        evaluateRulesBasicExample(currentCount);
-
-    }
+    private List<Workflow> workflow;
     
-    private void evaluateRulesBasicExample(int counter)
+    protected override void OnInitialized()
     {
-        dynamic data = new ExpandoObject();
-        data.count = counter;
+        populateDefaultValues();
+        loadAndPrintRules();
+    }
+
+    private void populateDefaultValues()
+    {
+        customerInfo.Name = "Raul";
+        customerInfo.Email = "raul.csa@gmail.com";
+        customerInfo.CreditHistory = "good";
+        customerInfo.Country = "india";
+        customerInfo.LoyaltyFactor = 2;
+        customerInfo.TotalPurchasesToDate = 6000;
+        
+        orderInfo.TotalOrders = 5;
+        orderInfo.RecurringItems = 2;
+        
+        telemetryInfo.NoOfVisitsPerMonth = 10;
+        telemetryInfo.PercentageOfBuyingToVisit = 15;
+    }
+
+    private void loadAndPrintRules()
+    {
+        var rulesFileName = "Discount.json";
+
+        var files = Directory.GetFiles(Directory.GetCurrentDirectory(), 
+            rulesFileName, SearchOption.AllDirectories);
+        
+        if (files == null || files.Length == 0)
+            throw new Exception("Rules file not found.");
+
+        var fileData = File.ReadAllText(files[0]);
+        workflow = JsonConvert.DeserializeObject<List<Workflow>>(fileData);
+    }
+
+    private void EvaluateRules()
+    {
+        dynamic input1 = new ExpandoObject();
+        input1.name = customerInfo.Name;
+        input1.email = customerInfo.Email;
+        input1.creditHistory = customerInfo.CreditHistory;
+        input1.country = customerInfo.Country;
+        input1.loyaltyFactor = customerInfo.LoyaltyFactor;
+        input1.totalPurchasesToDate = customerInfo.TotalPurchasesToDate;
+
+        dynamic input2 = new ExpandoObject();
+        input2.totalOrders = orderInfo.TotalOrders;
+        input2.recurringItems = orderInfo.RecurringItems;
+
+        dynamic input3 = new ExpandoObject();
+        input3.noOfVisitsPerMonth = telemetryInfo.NoOfVisitsPerMonth;
+        input3.percentageOfBuyingToVisit = telemetryInfo.PercentageOfBuyingToVisit;
+ 
         var inputs = new dynamic[]
         {
-            data
-        };
-
-        var rules = new List<Rule>();
-
-        var rule = new Rule
-        {
-            RuleName = "Test Rule",
-            SuccessEvent = "Count is within tolerance.",
-            ErrorMessage = "Over expected.",
-            Expression = "count < 3",
-            RuleExpressionType = RuleExpressionType.LambdaExpression
+            input1,
+            input2,
+            input3
         };
         
-        rules.Add(rule);
+        var bre = new RulesEngine.RulesEngine(workflow.ToArray(), null);
 
-        var workflows = new List<Workflow>();
+        var discountOffered = "";
+        
+        var workflowName = "Discount";
+        
+        List<RuleResultTree> resultList = bre.ExecuteAllRulesAsync(workflowName, inputs).Result;
 
-        var exampleWorkflow = new Workflow
-        {
-            WorkflowName = "Example Workflow",
-            Rules = rules
-        };
+        resultList.OnSuccess((eventName) => {
+            discountOffered = $"Discount offered is {eventName} % over MRP.";
+        });
 
-        workflows.Add(exampleWorkflow);
+        resultList.OnFail(() => {
+            discountOffered = "The user is not eligible for any discount.";
+        });
 
-        var bre = new RulesEngine.RulesEngine(workflows.ToArray());
-        var resultList = bre.ExecuteAllRulesAsync("Example Workflow", inputs).Result;
-        var outcome = resultList.TrueForAll(r => r.IsSuccess);;
-        result = outcome ? $"Result count is within tolerance" : $"Result count is NOT within tolerance";
+        result = discountOffered;
+
+        Console.WriteLine(discountOffered);
+    }
+    
+    private class CustomerInfo
+    {
+        public string Name { get; set; }
+        public string Email { get; set; }
+        public string CreditHistory { get; set; }
+        public string Country { get; set; }
+        public int LoyaltyFactor { get; set; }
+        public int TotalPurchasesToDate { get; set; }
+    }
+
+    private class OrderInfo
+    {
+        public int TotalOrders { get; set; }
+        public int RecurringItems { get; set; }
+    }
+
+    private class TelemetryInfo
+    {
+        public int NoOfVisitsPerMonth { get; set; }
+        public int PercentageOfBuyingToVisit { get; set; }
     }
 
 }

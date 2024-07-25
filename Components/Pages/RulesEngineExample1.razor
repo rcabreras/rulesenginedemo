@@ -61,7 +61,7 @@
 
         var bre = new RulesEngine.RulesEngine(workflows.ToArray());
         var resultList = bre.ExecuteAllRulesAsync("Example Workflow", inputs).Result;
-        var outcome = resultList.TrueForAll(r => r.IsSuccess);;
+        var outcome = resultList.TrueForAll(r => r.IsSuccess);
         result = outcome ? $"Result count is within tolerance" : $"Result count is NOT within tolerance";
     }
 
