@@ -101,8 +101,8 @@
     private CustomerInfo customerInfo = new();
     private OrderInfo orderInfo = new();
     private TelemetryInfo telemetryInfo = new();
-    private string result;
-    private List<Workflow> workflow;
+    private string? result;
+    private List<Workflow>? workflow;
     
     protected override void OnInitialized()
     {
@@ -188,10 +188,10 @@
     
     private class CustomerInfo
     {
-        public string Name { get; set; }
-        public string Email { get; set; }
-        public string CreditHistory { get; set; }
-        public string Country { get; set; }
+        public string? Name { get; set; }
+        public string? Email { get; set; }
+        public string? CreditHistory { get; set; }
+        public string? Country { get; set; }
         public int LoyaltyFactor { get; set; }
         public int TotalPurchasesToDate { get; set; }
     }

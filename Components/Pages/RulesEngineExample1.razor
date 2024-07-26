@@ -6,11 +6,13 @@
 <PageTitle>Counter</PageTitle>
 
 <h3>Basic static rule example implemented in sourcecode</h3>
-
+<br/>
+<h3>Rules to be evaluated</h3>
+<span>count less than 3</span>
+<br/>
 <p role="status">Current count: @currentCount</p>
-
 <button class="btn btn-primary" @onclick="IncrementCount">Click me</button>
-
+<br/>
 @if (result != null)
 {
     <h2>@result</h2>
@@ -18,7 +20,8 @@
 
 @code {
     private int currentCount = 0;
-    private string result;
+    private string? result;
+    private List<Workflow>? workflow;
 
     private void IncrementCount()
     {
@@ -48,8 +51,8 @@
         };
         
         rules.Add(rule);
-
-        var workflows = new List<Workflow>();
+        
+        workflow = new List<Workflow>();
 
         var exampleWorkflow = new Workflow
         {
@@ -57,9 +60,9 @@
             Rules = rules
         };
 
-        workflows.Add(exampleWorkflow);
+        workflow.Add(exampleWorkflow);
 
-        var bre = new RulesEngine.RulesEngine(workflows.ToArray());
+        var bre = new RulesEngine.RulesEngine(workflow.ToArray());
         var resultList = bre.ExecuteAllRulesAsync("Example Workflow", inputs).Result;
         var outcome = resultList.TrueForAll(r => r.IsSuccess);
         result = outcome ? $"Result count is within tolerance" : $"Result count is NOT within tolerance";
